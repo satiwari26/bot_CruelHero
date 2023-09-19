@@ -1,0 +1,9 @@
+{
+    "watch": ["."],
+    "ext": "js,json",
+    "execMap": {
+      "js": "node --harmony"
+    },
+    "ignore": ["test/**/*.js", "node_modules", ".env"]
+}
+  
