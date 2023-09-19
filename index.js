@@ -35,15 +35,21 @@ client.on("messageCreate", async message =>{
             }
         }
 
-        const canvasTasksPrompt = ["assignments due today", "upcoming quizzes"];
+        const canvasTasksPrompt = ["assignments due today", "upcoming quizzes", "courses taken"];
 
         if(canvasTasksPrompt.includes(messageVal) && messageVal === "assignments due today"){
             const task = new CanvasTasks();
             //assignmentsListDueToday is a async function so we have to wait until the promise is resolved
             const list = await task.assignmentsListDueToday();
-            message.channel.send(`**Dawgg, you have following assignments due today** \n`);
-            for(let i=0; i<list.length; i++){
-                message.channel.send(`**CourseName:** ${list[i].courseName} **assignmentName:** ${list[i].assingmentName} **Due at:** ${list[i].time}`);
+            console.log(list);
+            if(list.length > 0){
+                message.channel.send(`**Dawgg, you have following assignments due today** \n`);
+                for(let i=0; i<list.length; i++){
+                    message.channel.send(`**CourseName:** ${list[i].courseName} **assignmentName:** ${list[i].assingmentName} **Due at:** ${list[i].time}`);
+                }
+            }
+            else{
+                message.channel.send(`No outstanding assingments due today. Enjoy your life my boii!`);
             }
         }
         if(canvasTasksPrompt.includes(messageVal) && messageVal === "upcoming quizzes"){
@@ -53,6 +59,16 @@ client.on("messageCreate", async message =>{
             message.channel.send(`**Bro, you have following upcoming quizzes:** \n`);
             for(let i=0; i<taskList.length; i++){
                 message.channel.send(`**CourseName: ** ${taskList[i].courseName}     **QuizTitle: ** ${taskList[i].title}     **Due at: ** ${taskList[i].all_dates[0].due_at}     **unlocks at: ** ${taskList[i].all_dates[0].unlock_at}    **lock_at: ** ${taskList[i].all_dates[0].lock_at} \n \n`);
+            }
+        }
+
+        if(canvasTasksPrompt.includes(messageVal) && messageVal === "courses taken"){
+            const task = new CanvasTasks();
+            await task.updateCourseList();
+
+            message.channel.send(`**Courses taken:** \n`);
+            for(let i=0; i<task.courseLists.length; i++){
+                message.channel.send(`**${i+1}) CourseName: ** ${task.courseLists[i].courseName}, **course-Id:** ${task.courseLists[i].courseID}`);
             }
         }
     }
