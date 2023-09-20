@@ -71,6 +71,31 @@ client.on("messageCreate", async message =>{
                 message.channel.send(`**${i+1}) CourseName: ** ${task.courseLists[i].courseName}, **course-Id:** ${task.courseLists[i].courseID}`);
             }
         }
+
+        if(messageVal.includes("users list in course")){
+            const course = messageVal.substring(21,messageVal.length);
+            console.log(course);
+            const task = new CanvasTasks();
+            await task.updateCourseList();
+
+            let currCourseId = 0;
+            for(let i=0;i<task.courseLists.length;i++){
+                const lowerCaseStr = task.courseLists[i].courseName.toLowerCase();
+                if(lowerCaseStr.includes(course)){
+                    currCourseId = task.courseLists[i].courseID;
+                    break;
+                }
+            }
+
+            const usersList = await task.usersList(currCourseId);
+
+            //generate the list and channel it out to the discord
+            message.channel.send("**List of Homies in your course :**");
+            for(let i=0;i<usersList.length;i++){
+                message.channel.send(`${i+1} **Name: **  ${usersList[i].userName},   **User ID: **  ${usersList[i].userID}`);
+            }
+        }
+
     }
 });
 
@@ -181,7 +206,7 @@ class CanvasTasks{
                 const res = responses[j];
                 for(let i=0; i<res.data.length;i++){
                     const dueDate = res.data[i].due_at;
-                    if(dueDate !== null && "2023-04-15" === (dueDate.substring(0,10))){    //if todays date matches with the assignment due date
+                    if(dueDate !== null && this.todaysDate === (dueDate.substring(0,10))){    //if todays date matches with the assignment due date
                         const dueAssignment = {courseName: this.courseLists[j].courseName, assingmentName: res.data[i].name, time: dueDate.substring(10,dueDate.length)}
                         assignmentList.push(dueAssignment);
                     }
@@ -192,6 +217,30 @@ class CanvasTasks{
         catch(error){
             console.log(error);
         }
+    }
+
+    //to retrive the users lists enrolled in this courses, required specific courseID
+    async usersList(courseID){
+        const url = `https://canvas.calpoly.edu/api/v1/courses/${courseID}/students`;
+        try{
+            const resp = await axios.get(url, {
+                headers: {
+                    Authorization: `Bearer ${canvasToken}`,
+                },
+            });
+
+            const userList = [];
+            for(let i=0;i<resp.data.length;i++){
+                const userListObject = {userID: resp.data[i].id, userName: resp.data[i].name};
+                userList.push(userListObject);
+            }
+
+            return userList;
+        }
+        catch(error){
+            console.log(error);
+        }
+
     }
 }
 
