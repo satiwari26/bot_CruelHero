@@ -4,6 +4,15 @@ const axios = require("axios");
 
 //env tokens to include the api in the applciation
 require('dotenv').config();
+
+//set up connection with the PALM API and create google_client
+const { TextServiceClient } = require("@google-ai/generativelanguage").v1beta2;
+const { GoogleAuth } = require("google-auth-library");
+const MODEL_NAME = "models/text-bison-001";
+const GOOGLE_PALM_API = process.env.GOOGLE_PALM_API;
+const google_client = new TextServiceClient({authClient: new GoogleAuth().fromAPIKey(GOOGLE_PALM_API),});
+
+
 const discord_token = process.env.DISCORD_TOKEN;
 const canvasToken = process.env.CANVAS_TOKEN;
 
@@ -18,7 +27,7 @@ app.get("/", (req,res)=>{
 const { Client, GatewayIntentBits } = require('discord.js');
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]});
 client.on("messageCreate", async message =>{
-    if(message.author.id !== '1153450960614588456'){    //so it doesn't record it's own response
+    if(message.author.id !== '1153450960614588456' && message.content !== ''){    //so it doesn't record it's own response
         // console.log(message);
         let startStr = -1;
         for(let i=0;i<message.content.length;i++){  //get the staring position where @ tag ends, time complex O(n)
@@ -27,17 +36,19 @@ client.on("messageCreate", async message =>{
             }
         }
         let messageVal = (message.content.substring(startStr + 2, message.content.length)).toLowerCase();
-        const profanityList = ["shit", "fuck", "suck", "dick", "pussy", "cum"]; //to make the chat pg-13
+        const profanityList = ["shit", "fuck", "suck", "dick", "pussy", "cum","stfu"]; //to make the chat pg-13
+        let profanityCheck = false;
         for(let i=0;i<profanityList.length;i++){
             if(messageVal.includes(profanityList[i])){
                 message.channel.send(" Bro, Please maintain the integrity of this server. \n ** if you have issues with me contact Drew T. **");
+                profanityCheck = true;
                 break;
             }
         }
 
         const canvasTasksPrompt = ["assignments due today", "upcoming quizzes", "courses taken"];
 
-        if(canvasTasksPrompt.includes(messageVal) && messageVal === "assignments due today"){
+        if(canvasTasksPrompt.includes(messageVal) && messageVal === "assignments due today" && profanityCheck ===false){
             const task = new CanvasTasks();
             //assignmentsListDueToday is a async function so we have to wait until the promise is resolved
             const list = await task.assignmentsListDueToday();
@@ -52,7 +63,7 @@ client.on("messageCreate", async message =>{
                 message.channel.send(`No outstanding assingments due today. Enjoy your life my boii!`);
             }
         }
-        if(canvasTasksPrompt.includes(messageVal) && messageVal === "upcoming quizzes"){
+        else if(canvasTasksPrompt.includes(messageVal) && messageVal === "upcoming quizzes" && profanityCheck ===false){
             const task = new CanvasTasks();
             const taskList = await task.upcomingQuizez();
 
@@ -62,7 +73,7 @@ client.on("messageCreate", async message =>{
             }
         }
 
-        if(canvasTasksPrompt.includes(messageVal) && messageVal === "courses taken"){
+        else if(canvasTasksPrompt.includes(messageVal) && messageVal === "courses taken" && profanityCheck ===false){
             const task = new CanvasTasks();
             await task.updateCourseList();
 
@@ -71,33 +82,91 @@ client.on("messageCreate", async message =>{
                 message.channel.send(`**${i+1}) CourseName: ** ${task.courseLists[i].courseName}, **course-Id:** ${task.courseLists[i].courseID}`);
             }
         }
+        else if(messageVal.includes("users list in course") && profanityCheck ===false){
+            if(messageVal.length > 20){
+                const course = messageVal.substring(21,messageVal.length);
+                
+                console.log(course);
+                const task = new CanvasTasks();
+                await task.updateCourseList();
 
-        if(messageVal.includes("users list in course")){
-            const course = messageVal.substring(21,messageVal.length);
-            console.log(course);
-            const task = new CanvasTasks();
-            await task.updateCourseList();
+                let currCourseId = 0;
+                for(let i=0;i<task.courseLists.length;i++){
+                    const lowerCaseStr = task.courseLists[i].courseName.toLowerCase();
+                    if(lowerCaseStr.includes(course)){
+                        currCourseId = task.courseLists[i].courseID;
+                        break;
+                    }
+                }
 
-            let currCourseId = 0;
-            for(let i=0;i<task.courseLists.length;i++){
-                const lowerCaseStr = task.courseLists[i].courseName.toLowerCase();
-                if(lowerCaseStr.includes(course)){
-                    currCourseId = task.courseLists[i].courseID;
-                    break;
+                const usersList = await task.usersList(currCourseId);
+
+                //generate the list and channel it out to the discord
+                message.channel.send("**List of Homies in your course :**");
+                for(let i=0;i<usersList.length;i++){
+                    message.channel.send(`${i+1} **Name: **  ${usersList[i].userName},   **User ID: **  ${usersList[i].userID}`);
                 }
             }
-
-            const usersList = await task.usersList(currCourseId);
-
-            //generate the list and channel it out to the discord
-            message.channel.send("**List of Homies in your course :**");
-            for(let i=0;i<usersList.length;i++){
-                message.channel.send(`${i+1} **Name: **  ${usersList[i].userName},   **User ID: **  ${usersList[i].userID}`);
+            else{
+                message.channel.send(`you need to provide me the course name dawg!!`);
             }
+        }
+        else if(profanityCheck ===false){
+            const greetTitle = ["Bro", "Homie", "Dawgg", "Brother"];
+            const randomNumber = Math.floor(Math.random() * 4);
+            if(messageVal == "NULL"){
+                message.channel.send(`${greetTitle[randomNumber]}, I don't know how to answer that.`);
+            }
+            const chatConv = new ChatConversation(messageVal);
+            const response = await chatConv.generateResponse();
+            message.channel.send(`${greetTitle[randomNumber]}, ${response}`);
         }
 
     }
 });
+
+const chatDataSet = require("./dataset.json");
+
+//regular chat conversation class
+class ChatConversation {
+    constructor(userInput){
+        this.userinput = userInput;
+        this.response = "";
+    }
+
+    async generateResponse(){
+        
+        for(let i=0;i<chatDataSet.length;i++){
+            if(this.userinput.includes(chatDataSet[i].user.toLowerCase())){
+                this.response = chatDataSet[i].bot;
+                break;
+            }
+            else{
+                this.response = "";
+            }
+        }
+        if(this.response === ""){
+            try{
+                const result = await google_client.generateText({
+                    model: MODEL_NAME,
+                    prompt: {
+                    text: this.userinput,
+                    },
+                })
+                // console.log(JSON.stringify(result[0].candidates[0].output, null, 2));
+                this.response = result[0].candidates[0].output.substring(0,1000);
+            }
+            catch(error){
+                console.log(error);
+            }
+        }
+
+        return this.response;
+
+    }
+}
+
+
 
 //canvas task class, based on the different task would help us identify what kind of task we are dealing with
 class CanvasTasks{
@@ -242,6 +311,8 @@ class CanvasTasks{
         }
 
     }
+
+    //upcoming assignments (/api/v1/users/self/upcoming_events)
 }
 
 client.login(discord_token);
