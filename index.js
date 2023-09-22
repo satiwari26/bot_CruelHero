@@ -46,7 +46,7 @@ client.on("messageCreate", async message =>{
             }
         }
 
-        const canvasTasksPrompt = ["assignments due today", "upcoming quizzes", "courses taken"];
+        const canvasTasksPrompt = ["assignments due today", "upcoming quizzes", "courses taken", "missing assignments"];
 
         if(canvasTasksPrompt.includes(messageVal) && messageVal === "assignments due today" && profanityCheck ===false){
             const task = new CanvasTasks();
@@ -70,6 +70,20 @@ client.on("messageCreate", async message =>{
             message.channel.send(`**Bro, you have following upcoming quizzes:** \n`);
             for(let i=0; i<taskList.length; i++){
                 message.channel.send(`**CourseName: ** ${taskList[i].courseName}     **QuizTitle: ** ${taskList[i].title}     **Due at: ** ${taskList[i].all_dates[0].due_at}     **unlocks at: ** ${taskList[i].all_dates[0].unlock_at}    **lock_at: ** ${taskList[i].all_dates[0].lock_at} \n \n`);
+            }
+        }
+        else if(canvasTasksPrompt.includes(messageVal) && messageVal === "missing assignments" && profanityCheck ===false){
+            const tasks = new CanvasTasks();
+            const missAssingment = await tasks.missingAssingment();
+
+            if(missAssingment.length > 0){
+                message.channel.send(`**Bro you're missing following assingments:**`);
+                missAssingment.map((eachAssignment)=>{
+                    message.channel.send(`**Assignment Name:**  ${eachAssignment.name},  **Due At: ** ${eachAssignment.due_at},  **Submission Type: ** ${eachAssignment.submission_types[0]}, ${eachAssignment.submission_types[1]},  **Grading Type:**  ${eachAssignment.grading_type} \n \n`);
+                })
+            }
+            else{
+                message.channel.send(`No Missed assingments, Keep up the good work my boii, we're all gonna make it.`);
             }
         }
 
@@ -282,6 +296,21 @@ class CanvasTasks{
                 }
             }
             return(assignmentList);
+        }
+        catch(error){
+            console.log(error);
+        }
+    }
+
+    async missingAssingment(){
+        const url = 'https://canvas.calpoly.edu/api/v1/users/self/missing_submissions';
+        try{
+            const response = await axios.get(url,{
+                headers: {
+                    Authorization: `Bearer ${canvasToken}`,
+                },
+            });
+            return(response.data);
         }
         catch(error){
             console.log(error);
