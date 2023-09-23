@@ -1,5 +1,5 @@
 # bot_CruelHero
-bot designed and developed to help CPE transfer student in managing the discord server, helping with the Canvas Tasks and serving as a Language model tool.
+(powered by google's generative AI)bot designed and developed to help CPE transfer student in managing the discord server, helping with the Canvas Tasks and serving as a Language model tool.
 
 # Demo:
 ![Demo Gif](demo.gif)
