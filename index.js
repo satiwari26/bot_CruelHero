@@ -36,7 +36,7 @@ client.on("messageCreate", async message =>{
             }
         }
         let messageVal = (message.content.substring(startStr + 2, message.content.length)).toLowerCase();
-        const profanityList = ["shit", "fuck", "suck", "dick", "pussy", "cum","stfu"]; //to make the chat pg-13
+        const profanityList = require('./profanityList.json') //to make the chat pg-13
         let profanityCheck = false;
         for(let i=0;i<profanityList.length;i++){
             if(messageVal.includes(profanityList[i])){
