@@ -1,17 +1,24 @@
-const express = require("express");
+import express from 'express';
 const app = express();
-const axios = require("axios");
+import axios from 'axios';
+import fs from 'fs';
 
 //env tokens to include the api in the applciation
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
-//set up connection with the PALM API and create google_client
-const { TextServiceClient } = require("@google-ai/generativelanguage").v1beta2;
-const { GoogleAuth } = require("google-auth-library");
-const MODEL_NAME = "models/text-bison-001";
-const GOOGLE_PALM_API = process.env.GOOGLE_PALM_API;
-const google_client = new TextServiceClient({authClient: new GoogleAuth().fromAPIKey(GOOGLE_PALM_API),});
+//setting up the llm model
+import {LlamaModel, LlamaContext, LlamaChatSession} from "node-llama-cpp";
+import {fileURLToPath} from "url";
+import path from "path";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url)); 
+
+const model = new LlamaModel({
+    modelPath: path.join(__dirname, "models", "tinyllama-1.1b-chat-v0.3.Q4_K_M.gguf")
+});
+const context = new LlamaContext({model});
+const session = new LlamaChatSession({context});
 
 const discord_token = process.env.DISCORD_TOKEN;
 const canvasToken = process.env.CANVAS_TOKEN;
@@ -24,11 +31,14 @@ app.get("/", (req,res)=>{
     res.send("hello world! This is bot_CruelHero.");
 })
 
-const { Client, GatewayIntentBits } = require('discord.js');
+import { Client, GatewayIntentBits } from 'discord.js';
+import profanityList from './profanityList.json' assert { type: 'json' };
+import chatDataSet from './dataset.json' assert { type: 'json' }; //to make the chat more interactive
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]});
 client.on("messageCreate", async message =>{
     if(message.author.id !== '1153450960614588456' && message.content !== ''){    //so it doesn't record it's own response
-        // console.log(message);
+        // console.log(message);   //log the message type for recording in console
         let startStr = -1;
         for(let i=0;i<message.content.length;i++){  //get the staring position where @ tag ends, time complex O(n)
             if(message.content[i] === ">"){
@@ -36,7 +46,6 @@ client.on("messageCreate", async message =>{
             }
         }
         let messageVal = (message.content.substring(startStr + 2, message.content.length)).toLowerCase();
-        const profanityList = require('./profanityList.json') //to make the chat pg-13
         let profanityCheck = false;
         for(let i=0;i<profanityList.length;i++){
             if(messageVal.includes(profanityList[i])){
@@ -128,7 +137,7 @@ client.on("messageCreate", async message =>{
         else if(profanityCheck ===false){
             const greetTitle = ["Bro", "Homie", "Dawgg", "Brother"];
             const randomNumber = Math.floor(Math.random() * 4);
-            if(messageVal == "NULL"){
+            if(messageVal == "null"){
                 message.channel.send(`${greetTitle[randomNumber]}, I don't know how to answer that.`);
             }
             const chatConv = new ChatConversation(messageVal);
@@ -139,11 +148,10 @@ client.on("messageCreate", async message =>{
     }
 });
 
-const chatDataSet = require("./dataset.json");
-
 //regular chat conversation class
 class ChatConversation {
     constructor(userInput){
+        console.log(userInput);
         this.userinput = userInput;
         this.response = "";
     }
@@ -161,17 +169,13 @@ class ChatConversation {
         }
         if(this.response === ""){
             try{
-                const result = await google_client.generateText({
-                    model: MODEL_NAME,
-                    prompt: {
-                    text: this.userinput,
-                    },
-                })
-                // console.log(JSON.stringify(result[0].candidates[0].output, null, 2));
-                this.response = result[0].candidates[0].output.substring(0,1000);
+                const response = await session.prompt(this.userinput);
+                this.response = response.substring(0,1000);
             }
             catch(error){
                 console.log(error);
+                fs.appendFileSync('error.json', JSON.stringify(error, null, 2) + ',\n');
+                this.response = "I am sorry, something went wrong. This bug has been reported to Drew T. Thanks for your patience.";
             }
         }
 
@@ -244,6 +248,7 @@ class CanvasTasks{
         }
         catch(error){
             console.log(error);
+            fs.appendFileSync('error.json', JSON.stringify(error, null, 2) + ',\n');
         }
     }
 
@@ -265,6 +270,7 @@ class CanvasTasks{
         }
         catch(error){
             console.log(error);
+            fs.appendFileSync('error.json', JSON.stringify(error, null, 2) + ',\n');
         }
     }
 
@@ -299,6 +305,7 @@ class CanvasTasks{
         }
         catch(error){
             console.log(error);
+            fs.appendFileSync('error.json', JSON.stringify(error, null, 2) + ',\n');
         }
     }
 
@@ -314,6 +321,7 @@ class CanvasTasks{
         }
         catch(error){
             console.log(error);
+            fs.appendFileSync('error.json', JSON.stringify(error, null, 2) + ',\n');
         }
     }
 
@@ -337,6 +345,7 @@ class CanvasTasks{
         }
         catch(error){
             console.log(error);
+            fs.appendFileSync('error.json', JSON.stringify(error, null, 2) + ',\n');
         }
 
     }
