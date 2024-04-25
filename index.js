@@ -32,7 +32,6 @@ app.get("/", (req,res)=>{
 })
 
 import { Client, GatewayIntentBits } from 'discord.js';
-import profanityList from './profanityList.json' assert { type: 'json' };
 import chatDataSet from './dataset.json' assert { type: 'json' }; //to make the chat more interactive
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]});
@@ -47,14 +46,6 @@ client.on("messageCreate", async message =>{
         }
         let messageVal = (message.content.substring(startStr + 2, message.content.length)).toLowerCase();
         let profanityCheck = false;
-        for(let i=0;i<profanityList.length;i++){
-            if(messageVal.includes(profanityList[i])){
-                message.channel.send(" Bro, Please maintain the integrity of this server. \n ** if you have issues with me contact Drew T. **");
-                profanityCheck = true;
-                break;
-            }
-        }
-
         const canvasTasksPrompt = ["assignments due today", "upcoming quizzes", "courses taken", "missing assignments"];
 
         if(canvasTasksPrompt.includes(messageVal) && messageVal === "assignments due today" && profanityCheck ===false){
