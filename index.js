@@ -15,7 +15,7 @@ import path from "path";
 const __dirname = path.dirname(fileURLToPath(import.meta.url)); 
 
 const model = new LlamaModel({
-    modelPath: path.join(__dirname, "models", "tinyllama-1.1b-chat-v0.3.Q4_K_M.gguf")
+    modelPath: path.join(__dirname, "models", "Phi-3-mini-4k-instruct-q4.gguf")
 });
 const context = new LlamaContext({model});
 const session = new LlamaChatSession({context});
