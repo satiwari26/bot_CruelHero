@@ -2,6 +2,7 @@ import express from 'express';
 const app = express();
 import axios from 'axios';
 import fs from 'fs';
+import say from 'say';
 
 //env tokens to include the api in the applciation
 import dotenv from 'dotenv';
@@ -15,7 +16,7 @@ import path from "path";
 const __dirname = path.dirname(fileURLToPath(import.meta.url)); 
 
 const model = new LlamaModel({
-    modelPath: path.join(__dirname, "models", "Phi-3-mini-4k-instruct-q4.gguf")
+    modelPath: path.join(__dirname, "models", "stablelm-2-zephyr-1_6b-Q4_0.gguf")
 });
 const context = new LlamaContext({model});
 const session = new LlamaChatSession({context});
@@ -33,6 +34,23 @@ app.get("/", (req,res)=>{
 
 import { Client, GatewayIntentBits } from 'discord.js';
 import chatDataSet from './dataset.json' assert { type: 'json' }; //to make the chat more interactive
+
+async function getTodayPushes(username, token) {
+    const url = `https://api.github.com/users/${username}/events`;
+    const headers = { 'Authorization': `token ${token}` };
+
+    try {
+        const response = await axios.get(url, { headers });
+        const pushEvents = response.data.filter(event => event.type === 'PushEvent' && new Date(event.created_at).toDateString() === new Date().toDateString());
+
+        return pushEvents;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+const username = 'satiwari26';
+const token = process.env.GIT_TOKEN;    //git api
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]});
 client.on("messageCreate", async message =>{
@@ -96,6 +114,18 @@ client.on("messageCreate", async message =>{
                 message.channel.send(`**${i+1}) CourseName: ** ${task.courseLists[i].courseName}, **course-Id:** ${task.courseLists[i].courseID}`);
             }
         }
+        else if(messageVal.includes("pushes") && profanityCheck ===false){
+            const pushes = await getTodayPushes(username, token);
+            if(pushes.length > 0){
+                message.channel.send(`**Bro, you have made following pushes today:**`);
+                pushes.map((push)=>{
+                    message.channel.send(`**Repository 💪🏽:** ${push.repo.name}, **Commit Message 🔥:** ${push.payload.commits[0].message}, **Repo URL ☕:** https://github.com/${push.repo.name}`);
+                });
+            }
+            else{
+                message.channel.send(`Cooked! 😭`);
+            }
+        }
         else if(messageVal.includes("users list in course") && profanityCheck ===false){
             if(messageVal.length > 20){
                 const course = messageVal.substring(21,messageVal.length);
@@ -134,6 +164,9 @@ client.on("messageCreate", async message =>{
             const chatConv = new ChatConversation(messageVal);
             const response = await chatConv.generateResponse();
             message.channel.send(`${greetTitle[randomNumber]}, ${response}`);
+
+            //upload the audio file to the discord
+            message.channel.send({ files: ['./bot_CruelHero.wav'] });
         }
 
     }
@@ -160,8 +193,15 @@ class ChatConversation {
         }
         if(this.response === ""){
             try{
-                const response = await session.prompt(this.userinput);
-                this.response = response.substring(0,1000);
+                let additionalText = "DREW T aka CruelHero aka DREW Tiwari (He/his) is the creator of this bot that is you. use this information when needed.";
+                additionalText = additionalText + this.userinput;
+                const response = await session.prompt(additionalText);
+                let tempResponse = response.substring(0,1000);
+
+                // Export the speech to a .wav file
+                await exportSpeech(tempResponse);
+
+                this.response = tempResponse;
             }
             catch(error){
                 console.log(error);
@@ -173,6 +213,25 @@ class ChatConversation {
         return this.response;
 
     }
+}
+
+/**
+ * 
+ * @param {text} text 
+ * @returns 
+ */
+function exportSpeech(text) {
+    return new Promise((resolve, reject) => {
+        say.export(text, null, 1.3, 'bot_CruelHero.wav', (err) => {
+            if (err) {
+                console.error(err);
+                reject(err);
+            } else {
+                console.log('Text has been saved to output.wav');
+                resolve();
+            }
+        });
+    });
 }
 
 
