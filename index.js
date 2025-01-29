@@ -16,7 +16,7 @@ import path from "path";
 const __dirname = path.dirname(fileURLToPath(import.meta.url)); 
 
 const model = new LlamaModel({
-    modelPath: path.join(__dirname, "models", "stablelm-2-zephyr-1_6b-Q4_0.gguf")
+    modelPath: path.join(__dirname, "models", "deepseek-coder-6.7b.gguf")
 });
 const context = new LlamaContext({model});
 const session = new LlamaChatSession({context});
@@ -156,6 +156,7 @@ client.on("messageCreate", async message =>{
             }
         }
         else if(profanityCheck ===false){
+            const typing = setInterval(() => message.channel.sendTyping(), 5000);
             const greetTitle = ["Bro", "Homie", "Dawgg", "Brother"];
             const randomNumber = Math.floor(Math.random() * 4);
             if(messageVal == "null"){
@@ -167,6 +168,8 @@ client.on("messageCreate", async message =>{
 
             //upload the audio file to the discord
             message.channel.send({ files: ['./bot_CruelHero.wav'] });
+            // Stop typing indicator
+            clearInterval(typing);
         }
 
     }
@@ -193,13 +196,13 @@ class ChatConversation {
         }
         if(this.response === ""){
             try{
-                let additionalText = "DREW T aka CruelHero aka DREW Tiwari (He/his) is the creator of this bot that is you. use this information when needed.";
+                let additionalText = "DREW T aka CruelHero aka DREW Tiwari (He/his) is the creator of this bot that is you. use this information when needed. ";
                 additionalText = additionalText + this.userinput;
-                const response = await session.prompt(additionalText);
+                const response = await session.prompt(this.userinput);
                 let tempResponse = response.substring(0,1000);
 
                 // Export the speech to a .wav file
-                await exportSpeech(tempResponse);
+                await exportSpeech(response);
 
                 this.response = tempResponse;
             }
@@ -404,3 +407,7 @@ class CanvasTasks{
 }
 
 client.login(discord_token);
+
+
+//potemtial api for linking with fitbit dev cloud
+// might not work
